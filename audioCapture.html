@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Capture</title>
+    <script src="https://cdn.agora.io/sdk/release/AgoraRTC_4.20.2.js"></script>
+    <script src="https://download.agora.io/sdk/release/AgoraRTCSDK-4.20.2.js"></script>
+</head>
+<body>
+    <button id="startStopRecording">Start Recording</button>
+    <div id="transcription">Transcription will appear here...</div>
+    <script>
+        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        client.join("4f53dbe37bbd4c5b983e10a9d2f78e76", "yourChannelName", null, null).then(() => {
+  console.log("Joined channel successfully");
+}).catch((error) => {
+  console.error("Failed to join channel:", error);
+});
+AgoraRTC.createMicrophoneAudioTrack().then((microphoneTrack) => {
+  console.log("Microphone Track Created", microphoneTrack);
+}).catch((error) => {
+  console.error("Failed to create microphone track:", error);
+});
+client.publish([microphoneTrack]);
+      // JavaScript code for initializing Agora SDK,
+      // handling the start/stop recording button,
+      // and dealing with audio capture will go here.
+    </script>
+</body>
+</html>
