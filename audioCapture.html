@@ -3,29 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Capture</title>
-    <script src="https://cdn.agora.io/sdk/release/AgoraRTC_4.20.2.js"></script>
-    <script src="https://download.agora.io/sdk/release/AgoraRTCSDK-4.20.2.js"></script>
+    <title>Audio Capture and Transcription</title>
 </head>
 <body>
-    <button id="startStopRecording">Start Recording</button>
+    <button id="recordButton" onclick="toggleRecording()">Start/Stop Recording</button>
     <div id="transcription">Transcription will appear here...</div>
+
     <script>
-        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-        client.join("4f53dbe37bbd4c5b983e10a9d2f78e76", "yourChannelName", null, null).then(() => {
-  console.log("Joined channel successfully");
-}).catch((error) => {
-  console.error("Failed to join channel:", error);
-});
-AgoraRTC.createMicrophoneAudioTrack().then((microphoneTrack) => {
-  console.log("Microphone Track Created", microphoneTrack);
-}).catch((error) => {
-  console.error("Failed to create microphone track:", error);
-});
-client.publish([microphoneTrack]);
-      // JavaScript code for initializing Agora SDK,
-      // handling the start/stop recording button,
-      // and dealing with audio capture will go here.
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+
+        // Add an event listener to receive messages from the Adalo app
+        window.addEventListener("message", (event) => {
+            if (event.data === "startRecording" && !isRecording) {
+                startRecording();
+            } else if (event.data === "stopRecording" && isRecording) {
+                stopRecording();
+            }
+            // Additional commands can be implemented here
+        });
+
+        function toggleRecording() {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+                    isRecording = true;
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = function(event) {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = function() {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        sendToWatson(audioBlob);
+                    };
+                }).catch(error => console.error("Error accessing media devices.", error));
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            isRecording = false;
+        }
+
+        function sendToWatson(audioBlob) {
+            const formData = new FormData();
+            formData.append("audio", audioBlob);
+            const apiKey = "YOUR_IBM_API_KEY";
+            const url = "YOUR_IBM_WATSON_API_ENDPOINT";
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    "Authorization": "Basic " + btoa("apikey:" + apiKey),
+                    "Content-Type": "audio/wav"  // Ensure the content type matches your audio format
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('transcription').innerText = data.results[0].alternatives[0].transcript;
+            })
+            .catch(error => console.error("Error sending audio to Watson:", error));
+        }
     </script>
 </body>
 </html>
